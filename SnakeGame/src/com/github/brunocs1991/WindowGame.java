@@ -5,9 +5,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.*;
 import java.util.List;
 import java.util.Timer;
+import java.util.*;
 
 public class WindowGame extends JFrame implements KeyListener {
 
@@ -22,7 +22,9 @@ public class WindowGame extends JFrame implements KeyListener {
     private static final int PADDING = 50;
     private static final int[][] matrix = new int[MATRIX_SIZE][MATRIX_SIZE];
     private static final int sizeOfSnackBody = WINDOWN_WIDTH / MATRIX_SIZE;
+    private static final int DEFAULT_PERIOD = 400;
 
+    private Timer timer;
 
     private final List<Integer> bodyX = new ArrayList<>();
     private final List<Integer> bodyY = new ArrayList<>();
@@ -33,6 +35,10 @@ public class WindowGame extends JFrame implements KeyListener {
     private final List<Integer> foodPositionY = new ArrayList<>();
     private final Random random = new Random();
 
+    private boolean isGameOver = false;
+    private int score = 0;
+    private int period = DEFAULT_PERIOD;
+
     WindowGame() {
         setSize(WINDOWN_WIDTH + PADDING * 2, WINDOWN_HEIGHT + PADDING * 2);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -40,13 +46,39 @@ public class WindowGame extends JFrame implements KeyListener {
         setTitle("Snake Game");
         setResizable(false);
         addKeyListener(this);
-        Timer timer = new Timer();
+        startRestartGame();
+    }
+    private void reschedule() {
+        timer.cancel();
+        timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 moveSnake();
             }
-        }, 0, 400);
+        }, period, period);
+    }
+    private void startRestartGame() {
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                moveSnake();
+            }
+        }, 0, period);
+
+        for (int[] ints : matrix) {
+            Arrays.fill(ints, 0);
+        }
+        bodyX.clear();
+        bodyY.clear();
+        direction = RIGHT;
+        isGameOver = false;
+        score = 0;
+        period = DEFAULT_PERIOD;
+
+        headX = 6;
+        headY = 4;
         bodyX.add(5);
         bodyX.add(4);
 
@@ -54,16 +86,24 @@ public class WindowGame extends JFrame implements KeyListener {
         bodyY.add(4);
 
         matrix[11][11] = 1;
-
     }
-
+    private boolean isSnakeOutSideBoard() {
+        return headX < 0 || headX >= MATRIX_SIZE || headY < 0 || headY >= MATRIX_SIZE;
+    }
+    private boolean isSnackeHeadCollisionBody() {
+        for (int i = 0; i < bodyX.size(); i++) {
+            if (bodyX.get(i) == headX && bodyY.get(i) == headY) {
+                return true;
+            }
+        }
+        return false;
+    }
     private int[] getFoodPosition() {
         foodPositionX.clear();
         foodPositionY.clear();
-
-        for (int x = 0; x < 8; x++) {
-            for (int y = 0; y < 8; y++) {
-                if(matrix[y][x] != 1){
+        for (int x = 0; x < MATRIX_SIZE; x++) {
+            for (int y = 0; y < MATRIX_SIZE; y++) {
+                if (matrix[y][x] != 1) {
                     foodPositionX.add(x);
                     foodPositionY.add(y);
                 }
@@ -73,9 +113,9 @@ public class WindowGame extends JFrame implements KeyListener {
         int[] result = new int[2];
         result[0] = foodPositionX.get(randomIndex);
         result[1] = foodPositionY.get(randomIndex);
+
         return result;
     }
-
     private void moveSnake() {
         //Update snack body
         int oldTailX = bodyX.get(bodyX.size() - 1);
@@ -100,21 +140,34 @@ public class WindowGame extends JFrame implements KeyListener {
                 headX++;
                 break;
         }
-        // eat food
-        if (matrix[headY][headX] == 1) {
-            bodyX.add(oldTailX);
-            bodyY.add(oldTailY);
-            matrix[headY][headX] = 0;
-            int[] newFootPosition = getFoodPosition();
-            matrix[newFootPosition[1]][newFootPosition[0]] = 1;
-        }
-        repaint();
-    }
 
+        if (isSnakeOutSideBoard() || isSnackeHeadCollisionBody()) {
+            isGameOver = true;
+            timer.cancel();
+            repaint();
+        } else {
+            // eat food
+            if (matrix[headY][headX] == 1) {
+                bodyX.add(oldTailX);
+                bodyY.add(oldTailY);
+                matrix[headY][headX] = 0;
+                int[] newFootPosition = getFoodPosition();
+                matrix[newFootPosition[1]][newFootPosition[0]] = 1;
+                increaseScore();
+            }
+            repaint();
+        }
+    }
+    private void increaseScore(){
+         score +=1;
+         if(score % 3 == 0){
+             period /= 2;
+             reschedule();
+         }
+    }
     public static void main(String[] args) {
         new WindowGame();
     }
-
     @Override
     public void paint(Graphics g) {
         g.setColor(Color.WHITE);
@@ -142,13 +195,18 @@ public class WindowGame extends JFrame implements KeyListener {
 
             }
         }
+        if (isGameOver) {
+            g.setColor(Color.RED);
+            g.drawString("GAME OVER", 200, 200);
+        }
+
+        g.setColor(Color.BLUE);
+        g.drawString("Score: " + score, 50, 470);
 
     }
-
     @Override
     public void keyTyped(KeyEvent e) {
     }
-
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_UP && direction != DOWN) {
@@ -163,8 +221,11 @@ public class WindowGame extends JFrame implements KeyListener {
         if (e.getKeyCode() == KeyEvent.VK_RIGHT && direction != LEFT) {
             direction = RIGHT;
         }
-    }
 
+        if (e.getKeyCode() == KeyEvent.VK_ENTER && isGameOver) {
+            startRestartGame();
+        }
+    }
     @Override
     public void keyReleased(KeyEvent e) {
     }
