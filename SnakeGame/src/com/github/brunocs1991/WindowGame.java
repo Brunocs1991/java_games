@@ -1,15 +1,13 @@
 package com.github.brunocs1991;
 
 
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.Timer;
-import java.util.TimerTask;
 
 public class WindowGame extends JFrame implements KeyListener {
 
@@ -30,6 +28,10 @@ public class WindowGame extends JFrame implements KeyListener {
     private final List<Integer> bodyY = new ArrayList<>();
     private int headX = 6, headY = 4;
     private int direction = RIGHT;
+
+    private final List<Integer> foodPositionX = new ArrayList<>();
+    private final List<Integer> foodPositionY = new ArrayList<>();
+    private final Random random = new Random();
 
     WindowGame() {
         setSize(WINDOWN_WIDTH + PADDING * 2, WINDOWN_HEIGHT + PADDING * 2);
@@ -52,15 +54,33 @@ public class WindowGame extends JFrame implements KeyListener {
         bodyY.add(4);
 
         matrix[11][11] = 1;
-        matrix[11][12] = 1;
-        matrix[11][13] = 1;
+
+    }
+
+    private int[] getFoodPosition() {
+        foodPositionX.clear();
+        foodPositionY.clear();
+
+        for (int x = 0; x < 8; x++) {
+            for (int y = 0; y < 8; y++) {
+                if(matrix[y][x] != 1){
+                    foodPositionX.add(x);
+                    foodPositionY.add(y);
+                }
+            }
+        }
+        int randomIndex = random.nextInt(foodPositionX.size());
+        int[] result = new int[2];
+        result[0] = foodPositionX.get(randomIndex);
+        result[1] = foodPositionY.get(randomIndex);
+        return result;
     }
 
     private void moveSnake() {
         //Update snack body
         int oldTailX = bodyX.get(bodyX.size() - 1);
         int oldTailY = bodyY.get(bodyY.size() - 1);
-        for (int i  = bodyX.size() -1; i > 0; i --){
+        for (int i = bodyX.size() - 1; i > 0; i--) {
             bodyX.set(i, bodyX.get(i - 1));
             bodyY.set(i, bodyY.get(i - 1));
         }
@@ -80,10 +100,13 @@ public class WindowGame extends JFrame implements KeyListener {
                 headX++;
                 break;
         }
-        if(matrix[headY][headX] == 1){
+        // eat food
+        if (matrix[headY][headX] == 1) {
             bodyX.add(oldTailX);
             bodyY.add(oldTailY);
             matrix[headY][headX] = 0;
+            int[] newFootPosition = getFoodPosition();
+            matrix[newFootPosition[1]][newFootPosition[0]] = 1;
         }
         repaint();
     }
@@ -99,20 +122,20 @@ public class WindowGame extends JFrame implements KeyListener {
         g.setColor(Color.GREEN);
         g.fillRect(headX * sizeOfSnackBody + PADDING, headY * sizeOfSnackBody + PADDING, sizeOfSnackBody, sizeOfSnackBody);
 
-        for (int i = 0; i < bodyX.size(); i ++){
+        for (int i = 0; i < bodyX.size(); i++) {
             //Draw the snake body
             g.setColor(Color.RED);
-            g.fillRect(bodyX.get(i) * sizeOfSnackBody + PADDING,bodyY.get(i) * sizeOfSnackBody + PADDING, sizeOfSnackBody, sizeOfSnackBody);
+            g.fillRect(bodyX.get(i) * sizeOfSnackBody + PADDING, bodyY.get(i) * sizeOfSnackBody + PADDING, sizeOfSnackBody, sizeOfSnackBody);
         }
         g.setColor(Color.BLACK);
         for (int row = 0; row < matrix.length; row++) {
             for (int col = 0; col < matrix[row].length; col++) {
                 int x = col * sizeOfSnackBody + PADDING;
                 int y = row * sizeOfSnackBody + PADDING;
-                if(matrix[row][col] == 1){
+                if (matrix[row][col] == 1) {
                     g.setColor(Color.BLUE);
                     g.fillRect(x, y, sizeOfSnackBody, sizeOfSnackBody);
-                }else{
+                } else {
                     g.setColor(Color.BLACK);
                     g.drawRect(x, y, sizeOfSnackBody, sizeOfSnackBody);
                 }
